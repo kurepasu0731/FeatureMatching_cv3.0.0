@@ -1,9 +1,10 @@
 #ifndef SFM_H
 #define SFM_H
 
+#include "WebCamera.h"
 #include <opencv2\opencv.hpp>
+#include <opencv2/xfeatures2d.hpp>
 //#include <opencv2\nonfree\nonfree.hpp> // SIFTまたはSURFを使う場合は必要
-//#include <opencv2\xfeatures2d\nonfree.hpp>
 
 class SfM
 {
@@ -14,9 +15,9 @@ public:
 	WebCamera projector;
 
 	//基礎行列
-	cv::Mat F;
+	//cv::Mat F;
 	//基本行列
-	cv::Mat E;
+	//cv::Mat E;
 
 	//使用する画像
 	cv::Mat src_camImage; // 画像1のファイル名
@@ -40,26 +41,30 @@ public:
 		//歪み除去して読み込み(1枚目：カメラ　2枚目:プロジェクタ)
 		cv::undistort(cv::imread(camImageName), src_camImage, camera.cam_K, camera.cam_dist);
 		cv::undistort(cv::imread(projImageName), src_projImage, projector.cam_K, projector.cam_dist);
+
+		//歪み補正なし
+		//src_camImage = cv::imread(camImageName);
+		//src_projImage = cv::imread(projImageName);
 	};
 	~SfM(){};
 
 	void featureMatching(	const char *featureDetectorName, const char *descriptorExtractorName, const char *descriptorMatcherName, bool crossCheck)
 	{
-/*
-		if(featureDetectorName == "SIFT" || featureDetectorName == "SURF" 
-			|| descriptorExtractorName == "SIFT" || descriptorExtractorName == "SURF")
-		{
-			// SIFTまたはSURFを使う場合はこれを呼び出す．
-			cv::initModule_nonfree();
-		}
-*/
+		//if(featureDetectorName == "SIFT" || featureDetectorName == "SURF" 
+		//	|| descriptorExtractorName == "SIFT" || descriptorExtractorName == "SURF")
+		//{
+		//	// SIFTまたはSURFを使う場合はこれを呼び出す．
+		//	cv::initModule_nonfree();
+		//}
+
 		// 特徴点抽出
+		cv::xfeatures2d::initModule_xfeatures2d();
 		cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create(featureDetectorName);
 		std::vector<cv::KeyPoint> keypoint1, keypoint2;//1->camera 2->projector
 		detector->detect(src_camImage, keypoint1);
 		detector->detect(src_projImage, keypoint2);
 
-		// 特徴記述
+		//// 特徴記述
 		cv::Ptr<cv::DescriptorExtractor> extractor = cv::DescriptorExtractor::create(descriptorExtractorName);
 		cv::Mat descriptor1, descriptor2;
 		extractor->compute(src_camImage, keypoint1, descriptor1);
@@ -103,9 +108,9 @@ public:
 		for(int j = 0; j < (int)dmatch.size(); j++)
 		{
 			if(dmatch[j].trainIdx <= 0) dmatch[j].trainIdx = dmatch[j].imgIdx;
-//			if(dmatch[j].distance > 0.0 && dmatch[j].distance < cutoff){
+			if(dmatch[j].distance > 0.0 && dmatch[j].distance < cutoff){
 			//x座標で決め打ちしきい値(マスクの代わり)
-			if(dmatch[j].distance > 0.0 && dmatch[j].distance < cutoff && keypoint1[dmatch[j].queryIdx].pt.x > 240 && keypoint2[dmatch[j].trainIdx].pt.x > 240){
+//			if(dmatch[j].distance > 0.0 && dmatch[j].distance < cutoff && keypoint1[dmatch[j].queryIdx].pt.x > 240 && keypoint2[dmatch[j].trainIdx].pt.x > 240){
 				if(existing_trainIdx.find(dmatch[j].trainIdx) == existing_trainIdx.end() && dmatch[j].trainIdx >= 0 && dmatch[j].trainIdx < (int)keypoint2.size()) {
 					matches_good.push_back(dmatch[j]);
                     existing_trainIdx.insert(dmatch[j].trainIdx);
@@ -124,47 +129,64 @@ public:
 		// マッチング結果の表示
 		cv::drawMatches(src_camImage, keypoint1, src_projImage, keypoint2, matches_good, result);
 		//cv::drawMatches(src_image1, keypoint1, src_image2, keypoint2, dmatch, result);
+		//cv::Mat resize;
+		//result.copyTo(resize);
+		//cv::resize(result, resize, resize.size(), 0.5, 0.5);
 		cv::imshow("good matching", result);
 		cv::waitKey(0);
 	}
 
+	void saveResult(const char *resultImageName)
+	{
+		cv::imwrite(resultImageName, result);
+	}
 
 	cv::Mat findEssientialMat(){
-		//基礎行列の算出
-		//findfundamentalMat( pt1, pt2, F行列を計算する手法, 点からエピポーラ線までの最大距離, Fの信頼度)
-		if(cam_pts.size() == 7)
-			F = cv::findFundamentalMat(cam_pts, proj_pts,cv::FM_7POINT, 3.0, 0.99);
-		else if(cam_pts.size() == 8)
-			F = cv::findFundamentalMat(cam_pts, proj_pts,cv::FM_8POINT, 3.0, 0.99);
-		else
-			F = cv::findFundamentalMat(cam_pts, proj_pts,cv::RANSAC, 3.0, 0.99);
+		// 焦点距離とレンズ主点
+        double cam_f, proj_f, cam_fovx, cam_fovy, proj_fovx, proj_fovy, cam_pasp, proj_pasp;
+        cv::Point2d cam_pp, proj_pp;
+		cv::calibrationMatrixValues(camera.cam_K, cv::Size(camera.width, camera.height), 0.0, 0.0, cam_fovx, cam_fovy, cam_f, cam_pp, cam_pasp);
+		cv::calibrationMatrixValues(projector.cam_K, cv::Size(projector.width, projector.height), 0.0, 0.0, proj_fovx, proj_fovy, proj_f, proj_pp, proj_pasp);
 
-		//基本行列の算出
-		E = camera.cam_K.t() * F * projector.cam_K;
+		return cv::findEssentialMat(cam_pts, proj_pts, cam_f, cam_pp, CV_RANSAC, 0.1, 0.99);
 
-
-		return E;
 	}
 
 
 	void findProCamPose(const cv::Mat& E, const cv::Mat& R, const cv::Mat& t)
 	{
-/*			// 焦点距離とレンズ主点
-            double fovx, fovy, focal, pasp;
-            cv::Point2d pp;
-			cv::calibrationMatrixValues(cam_K, cv::Size(camera.width, camera.height), 0.0, 0.0, fovx, fovy, focal, pp, pasp);
- 
-            // 5点アルゴリズムで基礎行列を計算
-			cv::Matx33d E = cv::findEssentialMat(cam_pts, proj_pts, focal, pp);
- */
-            cv::Matx33d R1, R2;
-            cv::Matx31d t_;
+			std::cout << "\nEssentiamMat2:\n" << E << std::endl;
 
+            cv::Mat R1 = cv::Mat::eye(3,3,CV_64F);
+            cv::Mat R2 = cv::Mat::eye(3,3,CV_64F);
+			cv::Mat t_ = cv::Mat::zeros(3,1,CV_64F);
 			//[R1,t] [R1, -t] [R2, t], [R2, -t]の可能性がある
-			cv::decomposeEssentialMat(E, R1, R2, t_);
+			decomposeEssentialMat(E, R1, R2, t_);
+
 			std::cout << "\nR1:\n" << R1 << std::endl;
 			std::cout << "R2:\n" << R2 << std::endl;
 			std::cout << "t:\n" << t_ << std::endl;
+	}
+
+	int recoverPose( cv::InputArray E, cv::OutputArray _R, cv::OutputArray _t)
+	{
+		////カメラ
+		//double cam_fx = camera.cam_K.at<double>(0,0);
+		//double cam_fy = camera.cam_K.at<double>(1,1);
+		//cv::Point2d cam_pp = cv::Point2d(camera.cam_K.at<double>(0,2), camera.cam_K.at<double>(1,2));
+		////プロジェクタ
+		//double proj_fx = projector.cam_K.at<double>(0,0);
+		//double proj_fy = projector.cam_K.at<double>(1,1);
+		//cv::Point2d proj_pp = cv::Point2d(projector.cam_K.at<double>(0,2), projector.cam_K.at<double>(1,2));
+
+		// 焦点距離とレンズ主点
+        double cam_f, proj_f, cam_fovx, cam_fovy, proj_fovx, proj_fovy, cam_pasp, proj_pasp;
+        cv::Point2d cam_pp, proj_pp;
+		cv::calibrationMatrixValues(camera.cam_K, cv::Size(camera.width, camera.height), 0.0, 0.0, cam_fovx, cam_fovy, cam_f, cam_pp, cam_pasp);
+		cv::calibrationMatrixValues(projector.cam_K, cv::Size(projector.width, projector.height), 0.0, 0.0, proj_fovx, proj_fovy, proj_f, proj_pp, proj_pasp);
+
+		cv::recoverPose(E, cam_pts, proj_pts, _R, _t, cam_f, cam_pp);
+
 	}
 };
 	

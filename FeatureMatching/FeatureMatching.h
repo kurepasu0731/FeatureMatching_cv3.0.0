@@ -32,51 +32,51 @@ public:
 	//特徴点マッチング実行
 	void apply()
 	{
-		if(featureDetectorName == "SIFT" || featureDetectorName == "SURF" 
-			|| descriptorExtractorName == "SIFT" || descriptorExtractorName == "SURF")
-		{
-			// SIFTまたはSURFを使う場合はこれを呼び出す．
-			cv::initModule_nonfree();
-		}
+		//if(featureDetectorName == "SIFT" || featureDetectorName == "SURF" 
+		//	|| descriptorExtractorName == "SIFT" || descriptorExtractorName == "SURF")
+		//{
+		//	// SIFTまたはSURFを使う場合はこれを呼び出す．
+		//	cv::initModule_nonfree();
+		//}
 
-		// 特徴点抽出
-		cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create(featureDetectorName);
-		std::vector<cv::KeyPoint> keypoint1, keypoint2;
-		detector->detect(src_image1, keypoint1);
-		detector->detect(src_image2, keypoint2);
+		//// 特徴点抽出
+		//cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create(featureDetectorName);
+		//std::vector<cv::KeyPoint> keypoint1, keypoint2;
+		//detector->detect(src_image1, keypoint1);
+		//detector->detect(src_image2, keypoint2);
 
-		// 特徴記述
-		cv::Ptr<cv::DescriptorExtractor> extractor = cv::DescriptorExtractor::create(descriptorExtractorName);
-		cv::Mat descriptor1, descriptor2;
-		extractor->compute(src_image1, keypoint1, descriptor1);
-		extractor->compute(src_image2, keypoint2, descriptor2);
+		//// 特徴記述
+		//cv::Ptr<cv::DescriptorExtractor> extractor = cv::DescriptorExtractor::create(descriptorExtractorName);
+		//cv::Mat descriptor1, descriptor2;
+		//extractor->compute(src_image1, keypoint1, descriptor1);
+		//extractor->compute(src_image2, keypoint2, descriptor2);
 
-		// マッチング
-		cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create(descriptorMatcherName);
-		std::vector<cv::DMatch> dmatch;
-		if (crossCheck)
-		{
-			// クロスチェックする場合
-			std::vector<cv::DMatch> match12, match21;
-			matcher->match(descriptor1, descriptor2, match12);
-			matcher->match(descriptor2, descriptor1, match21);
-			for (size_t i = 0; i < match12.size(); i++)
-			{
-				cv::DMatch forward = match12[i];
-				cv::DMatch backward = match21[forward.trainIdx];
-				if (backward.trainIdx == forward.queryIdx)
-					dmatch.push_back(forward);
-			}
-		}
-		else
-		{
-			// クロスチェックしない場合
-			matcher->match(descriptor1, descriptor2, dmatch);
-		}
+		//// マッチング
+		//cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create(descriptorMatcherName);
+		//std::vector<cv::DMatch> dmatch;
+		//if (crossCheck)
+		//{
+		//	// クロスチェックする場合
+		//	std::vector<cv::DMatch> match12, match21;
+		//	matcher->match(descriptor1, descriptor2, match12);
+		//	matcher->match(descriptor2, descriptor1, match21);
+		//	for (size_t i = 0; i < match12.size(); i++)
+		//	{
+		//		cv::DMatch forward = match12[i];
+		//		cv::DMatch backward = match21[forward.trainIdx];
+		//		if (backward.trainIdx == forward.queryIdx)
+		//			dmatch.push_back(forward);
+		//	}
+		//}
+		//else
+		//{
+		//	// クロスチェックしない場合
+		//	matcher->match(descriptor1, descriptor2, dmatch);
+		//}
 
-		// マッチング結果の表示
-		cv::drawMatches(src_image1, keypoint1, src_image2, keypoint2, dmatch, result);
-		cv::imshow("matching", result);
+		//// マッチング結果の表示
+		//cv::drawMatches(src_image1, keypoint1, src_image2, keypoint2, dmatch, result);
+		//cv::imshow("matching", result);
 	}
 
 	void saveResult(const char *resultImageName)

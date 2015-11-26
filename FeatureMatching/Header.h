@@ -5,7 +5,7 @@
 
 #include <Windows.h>
 #include <opencv2\opencv.hpp>
-#include <opencv2/nonfree/nonfree.hpp> // SIFTまたはSURFを使う場合は必要
+//#include <opencv2/nonfree/nonfree.hpp> // SIFTまたはSURFを使う場合は必要
 //処理時間計測用
 #include <time.h>
 //PCL
