@@ -77,9 +77,9 @@ int main()
 		case '3':
 			{
 				//SfM
-				SfM sfm("./Image/dedennne/cap34.jpg", "./Image/dedennne/cap35.jpg", mainCamera, mainProjector);
+				SfM sfm("./Image/capture/cap32.jpg", "./Image/capture/cap33.jpg", mainCamera, mainProjector);
 				//①特徴点マッチングで対応点取得
-				sfm.featureMatching("SIFT", "SIFT", "BruteForce-L1", true);
+				sfm.featureMatching("ORB", "ORB", "BruteForce-L1", true);
 				sfm.saveResult("./Image/result/result_10.jpg");
 				//②基本行列の算出
 				cv::Mat E = sfm.findEssientialMat();

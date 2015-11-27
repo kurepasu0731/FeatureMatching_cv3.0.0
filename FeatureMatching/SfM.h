@@ -3,7 +3,8 @@
 
 #include "WebCamera.h"
 #include <opencv2\opencv.hpp>
-#include <opencv2/xfeatures2d.hpp>
+#include <opencv2\xfeatures2d\nonfree.hpp>
+#include <set>
 //#include <opencv2\nonfree\nonfree.hpp> // SIFTまたはSURFを使う場合は必要
 
 class SfM
@@ -50,28 +51,31 @@ public:
 
 	void featureMatching(	const char *featureDetectorName, const char *descriptorExtractorName, const char *descriptorMatcherName, bool crossCheck)
 	{
-		//if(featureDetectorName == "SIFT" || featureDetectorName == "SURF" 
-		//	|| descriptorExtractorName == "SIFT" || descriptorExtractorName == "SURF")
-		//{
-		//	// SIFTまたはSURFを使う場合はこれを呼び出す．
-		//	cv::initModule_nonfree();
-		//}
+		if(featureDetectorName == "SIFT" || featureDetectorName == "SURF" 
+			|| descriptorExtractorName == "SIFT" || descriptorExtractorName == "SURF")
+		{
+			// SIFTまたはSURFを使う場合はこれを呼び出す．
+			//cv::initModule_nonfree();
+			cv::Ptr<cv::xfeatures2d::SIFT> sift = cv::xfeatures2d::SIFT::create();
+		}
 
 		// 特徴点抽出
-		cv::xfeatures2d::initModule_xfeatures2d();
-		cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create(featureDetectorName);
+		//cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create(featureDetectorName);
+		cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
 		std::vector<cv::KeyPoint> keypoint1, keypoint2;//1->camera 2->projector
 		detector->detect(src_camImage, keypoint1);
 		detector->detect(src_projImage, keypoint2);
 
 		//// 特徴記述
-		cv::Ptr<cv::DescriptorExtractor> extractor = cv::DescriptorExtractor::create(descriptorExtractorName);
+		//cv::Ptr<cv::DescriptorExtractor> extractor = cv::DescriptorExtractor::create(descriptorExtractorName);
+		cv::Ptr<cv::DescriptorExtractor> extractor = cv::ORB::create();
 		cv::Mat descriptor1, descriptor2;
 		extractor->compute(src_camImage, keypoint1, descriptor1);
 		extractor->compute(src_projImage, keypoint2, descriptor2);
 
 		// マッチング
 		cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create(descriptorMatcherName);
+		//cv::Ptr<cv::DescriptorMatcher> matcher = cv::FlannBasedMatcher::create(descriptorMatcherName);
 		std::vector<cv::DMatch> dmatch;
 		if (crossCheck)
 		{
@@ -93,42 +97,48 @@ public:
 			matcher->match(descriptor1, descriptor2, dmatch);
 		}
 
-		//最小距離
-		double min_dist = DBL_MAX;
-		for(int j = 0; j < (int)dmatch.size(); j++)
-		{
-			double dist = dmatch[j].distance;
-			if(dist < min_dist) min_dist = (dist < 1.0) ? 1.0 : dist;
-		}
-
-		//良いペアのみ残す
-		double cutoff = 5.0 * min_dist;
-		std::set<int> existing_trainIdx;
-		std::vector<cv::DMatch> matches_good;
-		for(int j = 0; j < (int)dmatch.size(); j++)
-		{
-			if(dmatch[j].trainIdx <= 0) dmatch[j].trainIdx = dmatch[j].imgIdx;
-			if(dmatch[j].distance > 0.0 && dmatch[j].distance < cutoff){
-			//x座標で決め打ちしきい値(マスクの代わり)
-//			if(dmatch[j].distance > 0.0 && dmatch[j].distance < cutoff && keypoint1[dmatch[j].queryIdx].pt.x > 240 && keypoint2[dmatch[j].trainIdx].pt.x > 240){
-				if(existing_trainIdx.find(dmatch[j].trainIdx) == existing_trainIdx.end() && dmatch[j].trainIdx >= 0 && dmatch[j].trainIdx < (int)keypoint2.size()) {
-					matches_good.push_back(dmatch[j]);
-                    existing_trainIdx.insert(dmatch[j].trainIdx);
-				}
-			}
-		}
-
-        // 対応点の登録(5ペア以上は必要)
-        if (matches_good.size() > 10) {
-            for (int j = 0; j < (int)matches_good.size(); j++) {
-                cam_pts.push_back(keypoint1[matches_good[j].queryIdx].pt);
-                proj_pts.push_back(keypoint2[matches_good[j].trainIdx].pt);
+//		//最小距離
+//		double min_dist = DBL_MAX;
+//		for(int j = 0; j < (int)dmatch.size(); j++)
+//		{
+//			double dist = dmatch[j].distance;
+//			if(dist < min_dist) min_dist = (dist < 1.0) ? 1.0 : dist;
+//		}
+//
+//		//良いペアのみ残す
+//		double cutoff = 5.0 * min_dist;
+//		std::set<int> existing_trainIdx;
+//		std::vector<cv::DMatch> matches_good;
+//		for(int j = 0; j < (int)dmatch.size(); j++)
+//		{
+//			if(dmatch[j].trainIdx <= 0) dmatch[j].trainIdx = dmatch[j].imgIdx;
+//			if(dmatch[j].distance > 0.0 && dmatch[j].distance < cutoff){
+//			//x座標で決め打ちしきい値(マスクの代わり)
+////			if(dmatch[j].distance > 0.0 && dmatch[j].distance < cutoff && keypoint1[dmatch[j].queryIdx].pt.x > 240 && keypoint2[dmatch[j].trainIdx].pt.x > 240){
+//				if(existing_trainIdx.find(dmatch[j].trainIdx) == existing_trainIdx.end() && dmatch[j].trainIdx >= 0 && dmatch[j].trainIdx < (int)keypoint2.size()) {
+//					matches_good.push_back(dmatch[j]);
+//                    existing_trainIdx.insert(dmatch[j].trainIdx);
+//				}
+//			}
+//		}
+//
+//        // 対応点の登録(5ペア以上は必要)
+//        if (matches_good.size() > 10) {
+//            for (int j = 0; j < (int)matches_good.size(); j++) {
+//                cam_pts.push_back(keypoint1[matches_good[j].queryIdx].pt);
+//                proj_pts.push_back(keypoint2[matches_good[j].trainIdx].pt);
+//            }
+//		}
+        if (dmatch.size() > 10) {
+            for (int j = 0; j < (int)dmatch.size(); j++) {
+                cam_pts.push_back(keypoint1[dmatch[j].queryIdx].pt);
+                proj_pts.push_back(keypoint2[dmatch[j].trainIdx].pt);
             }
 		}
 
 		// マッチング結果の表示
-		cv::drawMatches(src_camImage, keypoint1, src_projImage, keypoint2, matches_good, result);
-		//cv::drawMatches(src_image1, keypoint1, src_image2, keypoint2, dmatch, result);
+		//cv::drawMatches(src_camImage, keypoint1, src_projImage, keypoint2, matches_good, result);
+		cv::drawMatches(src_camImage, keypoint1, src_projImage, keypoint2, dmatch, result);
 		//cv::Mat resize;
 		//result.copyTo(resize);
 		//cv::resize(result, resize, resize.size(), 0.5, 0.5);
@@ -155,8 +165,6 @@ public:
 
 	void findProCamPose(const cv::Mat& E, const cv::Mat& R, const cv::Mat& t)
 	{
-			std::cout << "\nEssentiamMat2:\n" << E << std::endl;
-
             cv::Mat R1 = cv::Mat::eye(3,3,CV_64F);
             cv::Mat R2 = cv::Mat::eye(3,3,CV_64F);
 			cv::Mat t_ = cv::Mat::zeros(3,1,CV_64F);
@@ -168,7 +176,7 @@ public:
 			std::cout << "t:\n" << t_ << std::endl;
 	}
 
-	int recoverPose( cv::InputArray E, cv::OutputArray _R, cv::OutputArray _t)
+	void recoverPose( cv::InputArray E, cv::OutputArray _R, cv::OutputArray _t)
 	{
 		////カメラ
 		//double cam_fx = camera.cam_K.at<double>(0,0);
