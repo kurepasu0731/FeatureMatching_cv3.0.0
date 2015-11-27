@@ -4,6 +4,11 @@
 #include "WebCamera.h"
 #include "SfM.h"
 
+//PCL
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+
 int main()
 {
 	//ëÄçÏê‡ñæ
@@ -94,6 +99,20 @@ int main()
 				//sfm.findProCamPose(E, R, t);
 				std::cout << "\nR:\n" << R << std::endl;
 				std::cout << "t:\n" << t << std::endl;
+
+				// 3DÉrÉÖÅ[ÉA
+				pcl::visualization::PCLVisualizer viewer("3D Viewer");
+				viewer.setBackgroundColor(0, 0, 0);
+				viewer.addCoordinateSystem(2.0);
+				viewer.initCameraParameters();
+				Eigen::Affine3f view;
+				Eigen::Matrix4f _t;
+				_t << R.at<float>(0,0) , R.at<float>(0,1) , R.at<float>(0,2) , t.at<float>(0,0),
+						  R.at<float>(1,0) , R.at<float>(1,1) , R.at<float>(1,2) ,  t.at<float>(1,0),
+						  R.at<float>(2,0) , R.at<float>(2,1) , R.at<float>(2,2) ,  t.at<float>(2,0);
+				view = _t;
+				viewer.addCoordinateSystem(1.0, view);
+
 
 			}
 			break;
