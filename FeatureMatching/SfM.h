@@ -97,48 +97,48 @@ public:
 			matcher->match(descriptor1, descriptor2, dmatch);
 		}
 
-//		//最小距離
-//		double min_dist = DBL_MAX;
-//		for(int j = 0; j < (int)dmatch.size(); j++)
-//		{
-//			double dist = dmatch[j].distance;
-//			if(dist < min_dist) min_dist = (dist < 1.0) ? 1.0 : dist;
-//		}
-//
-//		//良いペアのみ残す
-//		double cutoff = 5.0 * min_dist;
-//		std::set<int> existing_trainIdx;
-//		std::vector<cv::DMatch> matches_good;
-//		for(int j = 0; j < (int)dmatch.size(); j++)
-//		{
-//			if(dmatch[j].trainIdx <= 0) dmatch[j].trainIdx = dmatch[j].imgIdx;
-//			if(dmatch[j].distance > 0.0 && dmatch[j].distance < cutoff){
-//			//x座標で決め打ちしきい値(マスクの代わり)
-////			if(dmatch[j].distance > 0.0 && dmatch[j].distance < cutoff && keypoint1[dmatch[j].queryIdx].pt.x > 240 && keypoint2[dmatch[j].trainIdx].pt.x > 240){
-//				if(existing_trainIdx.find(dmatch[j].trainIdx) == existing_trainIdx.end() && dmatch[j].trainIdx >= 0 && dmatch[j].trainIdx < (int)keypoint2.size()) {
-//					matches_good.push_back(dmatch[j]);
-//                    existing_trainIdx.insert(dmatch[j].trainIdx);
-//				}
-//			}
-//		}
-//
-//        // 対応点の登録(5ペア以上は必要)
-//        if (matches_good.size() > 10) {
-//            for (int j = 0; j < (int)matches_good.size(); j++) {
-//                cam_pts.push_back(keypoint1[matches_good[j].queryIdx].pt);
-//                proj_pts.push_back(keypoint2[matches_good[j].trainIdx].pt);
-//            }
-//		}
-        if (dmatch.size() > 10) {
-            for (int j = 0; j < (int)dmatch.size(); j++) {
-                cam_pts.push_back(keypoint1[dmatch[j].queryIdx].pt);
-                proj_pts.push_back(keypoint2[dmatch[j].trainIdx].pt);
-            }
+		//最小距離
+		double min_dist = DBL_MAX;
+		for(int j = 0; j < (int)dmatch.size(); j++)
+		{
+			double dist = dmatch[j].distance;
+			if(dist < min_dist) min_dist = (dist < 1.0) ? 1.0 : dist;
 		}
 
+		//良いペアのみ残す
+		double cutoff = 5.0 * min_dist;
+		std::set<int> existing_trainIdx;
+		std::vector<cv::DMatch> matches_good;
+		for(int j = 0; j < (int)dmatch.size(); j++)
+		{
+			if(dmatch[j].trainIdx <= 0) dmatch[j].trainIdx = dmatch[j].imgIdx;
+			if(dmatch[j].distance > 0.0 && dmatch[j].distance < cutoff){
+			//x座標で決め打ちしきい値(マスクの代わり)
+//			if(dmatch[j].distance > 0.0 && dmatch[j].distance < cutoff && keypoint1[dmatch[j].queryIdx].pt.x > 240 && keypoint2[dmatch[j].trainIdx].pt.x > 240){
+				if(existing_trainIdx.find(dmatch[j].trainIdx) == existing_trainIdx.end() && dmatch[j].trainIdx >= 0 && dmatch[j].trainIdx < (int)keypoint2.size()) {
+					matches_good.push_back(dmatch[j]);
+                    existing_trainIdx.insert(dmatch[j].trainIdx);
+				}
+			}
+		}
+
+        // 対応点の登録(5ペア以上は必要)
+        if (matches_good.size() > 10) {
+            for (int j = 0; j < (int)matches_good.size(); j++) {
+                cam_pts.push_back(keypoint1[matches_good[j].queryIdx].pt);
+                proj_pts.push_back(keypoint2[matches_good[j].trainIdx].pt);
+            }
+		}
+  //      if (dmatch.size() > 10) {
+  //          for (int j = 0; j < (int)dmatch.size(); j++) {
+  //              cam_pts.push_back(keypoint1[dmatch[j].queryIdx].pt);
+  //              proj_pts.push_back(keypoint2[dmatch[j].trainIdx].pt);
+  //          }
+		//}
+
 		// マッチング結果の表示
-		//cv::drawMatches(src_camImage, keypoint1, src_projImage, keypoint2, matches_good, result);
-		cv::drawMatches(src_camImage, keypoint1, src_projImage, keypoint2, dmatch, result);
+		cv::drawMatches(src_camImage, keypoint1, src_projImage, keypoint2, matches_good, result);
+		//cv::drawMatches(src_camImage, keypoint1, src_projImage, keypoint2, dmatch, result);
 		//cv::Mat resize;
 		//result.copyTo(resize);
 		//cv::resize(result, resize, resize.size(), 0.5, 0.5);
@@ -151,15 +151,51 @@ public:
 		cv::imwrite(resultImageName, result);
 	}
 
-	cv::Mat findEssientialMat(){
+	cv::Mat findEssentialMat(){
 		// 焦点距離とレンズ主点
         double cam_f, proj_f, cam_fovx, cam_fovy, proj_fovx, proj_fovy, cam_pasp, proj_pasp;
         cv::Point2d cam_pp, proj_pp;
 		cv::calibrationMatrixValues(camera.cam_K, cv::Size(camera.width, camera.height), 0.0, 0.0, cam_fovx, cam_fovy, cam_f, cam_pp, cam_pasp);
 		cv::calibrationMatrixValues(projector.cam_K, cv::Size(projector.width, projector.height), 0.0, 0.0, proj_fovx, proj_fovy, proj_f, proj_pp, proj_pasp);
 
-		return cv::findEssentialMat(cam_pts, proj_pts, cam_f, cam_pp, CV_RANSAC, 0.1, 0.99);
+		cv::Mat essentialMat = cv::findEssentialMat(cam_pts, proj_pts, cam_f, cam_pp, CV_RANSAC, 0.1, 0.99);
+		std::cout << "Essential Matrix_1\n" << essentialMat << std::endl;
 
+		return essentialMat;
+
+	}
+
+	cv::Mat findEssentialMat2()
+	{
+		std::vector<cv::Point2d> p1;//camera
+		std::vector<cv::Point2d> p2;//projector
+		//対応付いた特徴点の取り出しと焦点距離1.0のときの座標に変換
+		for (size_t i = 0; i < cam_pts.size(); ++i)
+		{
+		  cv::Mat ip(3, 1, CV_64FC1);
+		  cv::Point2d p;
+		  //カメラの点
+		  ip.at<double>(0) = cam_pts[i].x;
+		  ip.at<double>(1) = cam_pts[i].y;
+		  ip.at<double>(2) = 1.0;
+		  ip = camera.cam_K.inv()*ip;
+		  p.x = ip.at<double>(0);
+		  p.y = ip.at<double>(1);
+		  p1.push_back( p );
+		  //プロジェクタの点
+		  ip.at<double>(0) = proj_pts[i].x;
+		  ip.at<double>(1) = proj_pts[i].y;
+		  ip.at<double>(2) = 1.0;
+		  ip = projector.cam_K.inv()*ip;
+		  p.x = ip.at<double>(0);
+		  p.y = ip.at<double>(1);
+		  p2.push_back( p );
+		}
+
+		cv::Mat essentialMat = cv::findEssentialMat(p1, p2);
+		std::cout << "Essential Matrix_2\n" << essentialMat << std::endl;
+
+		return essentialMat;
 	}
 
 

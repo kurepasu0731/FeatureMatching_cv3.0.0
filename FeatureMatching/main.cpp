@@ -82,36 +82,53 @@ int main()
 		case '3':
 			{
 				//SfM
-				SfM sfm("./Image/capture/cap32.jpg", "./Image/capture/cap33.jpg", mainCamera, mainProjector);
+				SfM sfm("./Image/capture/cap38.jpg", "./Image/capture/cap40.jpg", mainCamera, mainProjector);
 				//①特徴点マッチングで対応点取得
 				sfm.featureMatching("ORB", "ORB", "BruteForce-L1", true);
 				sfm.saveResult("./Image/result/result_10.jpg");
 				//②基本行列の算出
-				cv::Mat E = sfm.findEssientialMat();
-				std::cout << "\nEssentiamMat:\n" << E << std::endl;
+				cv::Mat E1 = sfm.findEssentialMat(); //cv::calibrationMatrixValues
+				cv::Mat E2 = sfm.findEssentialMat2();//内部行列の逆行列を掛ける
+				//std::cout << "\nEssentiamMat:\n" << E << std::endl;
 
-				cv::Mat R = cv::Mat::eye(3,3,CV_64F);
-				cv::Mat t = cv::Mat::zeros(3,1,CV_64F);
+				//cv::Mat R = cv::Mat::eye(3,3,CV_64F);
+				//cv::Mat t = cv::Mat::zeros(3,1,CV_64F);
+				cv::Matx33d R1, R2;
+				cv::Matx31d t1, t2;
 
 				//③R,tの算出
-				sfm.recoverPose(E, R, t);
+				sfm.recoverPose(E1, R1, t1);
+				sfm.recoverPose(E2, R2, t2);
 				//③基本行列の分解
 				//sfm.findProCamPose(E, R, t);
-				std::cout << "\nR:\n" << R << std::endl;
-				std::cout << "t:\n" << t << std::endl;
+				std::cout << "\nR1:\n" << R1 << std::endl;
+				std::cout << "t1:\n" << t1 << std::endl;
+				std::cout << "\nR2:\n" << R2 << std::endl;
+				std::cout << "t2:\n" << t2 << std::endl;
 
 				// 3Dビューア
 				pcl::visualization::PCLVisualizer viewer("3D Viewer");
 				viewer.setBackgroundColor(0, 0, 0);
 				viewer.addCoordinateSystem(2.0);
 				viewer.initCameraParameters();
-				Eigen::Affine3f view;
-				Eigen::Matrix4f _t;
-				_t << R.at<float>(0,0) , R.at<float>(0,1) , R.at<float>(0,2) , t.at<float>(0,0),
-						  R.at<float>(1,0) , R.at<float>(1,1) , R.at<float>(1,2) ,  t.at<float>(1,0),
-						  R.at<float>(2,0) , R.at<float>(2,1) , R.at<float>(2,2) ,  t.at<float>(2,0);
-				view = _t;
-				viewer.addCoordinateSystem(1.0, view);
+				Eigen::Affine3f view1, view2;
+				Eigen::Matrix4f _t1, _t2;
+				//E1の結果
+				_t1 << R1(0,0) , R1(0,1) , R1(0,2) , t1(0,0), 
+						  R1(1,0) , R1(1,1) , R1(1,2) , t1(1,0), 
+						  R1(2,0) , R1(2,1) , R1(2,2) , t1(2,0), 
+						  0.0f, 0.0f ,0.0f, 1.0f;
+				std::cout << "_t1:\n"<< _t1 <<std::endl;
+				view1 = _t1;
+				viewer.addCoordinateSystem(1.0, view1);
+				//E2の結果
+				_t2 << R2(0,0) , R2(0,1) , R2(0,2) , t2(0,0), 
+						  R2(1,0) , R2(1,1) , R2(1,2) , t2(1,0), 
+						  R2(2,0) , R2(2,1) , R2(2,2) , t2(2,0), 
+						  0.0f, 0.0f ,0.0f, 1.0f;
+				std::cout << "_t2:\n"<< _t2 <<std::endl;
+				view2 = _t2;
+				viewer.addCoordinateSystem(0.5, view2);
 
 
 			}
