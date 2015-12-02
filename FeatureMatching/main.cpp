@@ -165,7 +165,7 @@ int main()
 			case '4':
 			{
 				//data loading
-				loadFile("../groundtruth_1221634.xml");
+				loadFile("../groundtruth_1222032.xml");
 
 				//cv::FileStorage fs("../groundtruth_1221634.xml", cv::FileStorage::READ);
 				//cv::FileNode node(fs.fs, NULL);
@@ -208,7 +208,7 @@ int main()
 				}
 
 				cv::Mat E = cv::findEssentialMat(p1, p2);
-				std::cout << "Essential Matrix_2\n" << E << std::endl;
+				std::cout << "Essential Matrix\n" << E << std::endl;
 
 				cv::Mat R1 = cv::Mat::eye(3,3,CV_64F);
 				cv::Mat t1 = cv::Mat::zeros(3,1,CV_64F);
