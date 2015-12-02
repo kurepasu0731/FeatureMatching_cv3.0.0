@@ -9,6 +9,34 @@
 #include <pcl/point_types.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
+
+//**Loading datas**//
+cv::Mat K1 = cv::Mat::eye(3,3,CV_64F);
+cv::Mat K2 = cv::Mat::eye(3,3,CV_64F);
+cv::Mat R2 = cv::Mat::eye(3,3,CV_64F);
+cv::Mat t2;
+
+std::vector<cv::Point3d> worldPoints; //対応点の3次元座標
+std::vector<cv::Point2d> imagePoints1; //カメラ1画像への射影点
+std::vector<cv::Point2d> imagePoints2; //カメラ2画像への射影点
+
+void loadFile(const std::string& filename)
+{
+	cv::FileStorage fs(filename, cv::FileStorage::READ);
+	cv::FileNode node(fs.fs, NULL);
+
+	read(node["worldPoints"], worldPoints);
+	read(node["imagePoints1"], imagePoints1);
+	read(node["imagePoints2"], imagePoints2);
+
+	read(node["K1"], K1);
+	read(node["K2"], K2);
+	read(node["R2"], R2);
+	read(node["t2"], t2);
+
+	std::cout << "file loaded." << std::endl;
+}
+
 int main()
 {
 	//操作説明
@@ -139,6 +167,20 @@ int main()
 				//data loading
 				loadFile("../groundtruth_1221634.xml");
 
+				//cv::FileStorage fs("../groundtruth_1221634.xml", cv::FileStorage::READ);
+				//cv::FileNode node(fs.fs, NULL);
+
+				//read(node["worldPoints"], worldPoints);
+				//read(node["imagePoints1"], imagePoints1);
+				//read(node["imagePoints2"], imagePoints2);
+
+				//read(node["K1"], K1);
+				//read(node["K2"], K2);
+				//read(node["R2"], R2);
+				//read(node["t2"], t2);
+
+				//std::cout << "file loaded." << std::endl;
+
 				std::vector<cv::Point2d> p1;//camera
 				std::vector<cv::Point2d> p2;//projector
 
@@ -193,31 +235,4 @@ int main()
 	}
 
 	return 0;
-}
-
-//**Loading datas**//
-cv::Mat K1 = cv::Mat::eye(3,3,CV_64F);
-cv::Mat K2 = cv::Mat::eye(3,3,CV_64F);
-cv::Mat R2 = cv::Mat::eye(3,3,CV_64F);
-cv::Mat t2;
-
-std::vector<cv::Point3d> worldPoints; //対応点の3次元座標
-std::vector<cv::Point2d> imagePoints1; //カメラ1画像への射影点
-std::vector<cv::Point2d> imagePoints2; //カメラ2画像への射影点
-
-void loadFile(const std::string& filename)
-{
-	cv::FileStorage fs(filename, cv::FileStorage::READ);
-	cv::FileNode node(fs.fs, NULL);
-
-	read(node["worldPoints"], worldPoints);
-	read(node["imagePoints1"], imagePoints2);
-	read(node["imagePoints2"], imagePoints2);
-
-	read(node["K1"], K1);
-	read(node["K2"], K2);
-	read(node["R2"], R2);
-	read(node["t2"], t2);
-
-	std::cout << "file loaded." << std::endl;
 }
