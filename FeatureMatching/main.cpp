@@ -16,6 +16,7 @@ int main()
 		printf("1 : カメラキャリブレーション\n");
 		printf("2 : カメラ・プロジェクタのキャリブレーション結果読み込み\n");
 		printf("3: カメラ・プロジェクタの相対位置推定\n");
+		printf("4: GroundTruth\n");
 		printf("c : 撮影\n"); 
 
 	//カメラ
@@ -133,11 +134,90 @@ int main()
 
 			}
 			break;
-		default:
+			case '4':
+			{
+				//data loading
+				loadFile("../groundtruth_1221634.xml");
+
+				std::vector<cv::Point2d> p1;//camera
+				std::vector<cv::Point2d> p2;//projector
+
+				//対応付いた特徴点の取り出しと焦点距離1.0のときの座標に変換
+				for (size_t i = 0; i < imagePoints1.size(); ++i)
+				{
+				  cv::Mat ip(3, 1, CV_64FC1);
+				  cv::Point2d p;
+				  //カメラの点
+				  ip.at<double>(0) = imagePoints1[i].x;
+				  ip.at<double>(1) = imagePoints1[i].y;
+				  ip.at<double>(2) = 1.0;
+				  ip = K1.inv()*ip;
+				  p.x = ip.at<double>(0);
+				  p.y = ip.at<double>(1);
+				  p1.push_back( p );
+				  //プロジェクタの点
+				  ip.at<double>(0) = imagePoints2[i].x;
+				  ip.at<double>(1) = imagePoints2[i].y;
+				  ip.at<double>(2) = 1.0;
+				  ip = K2.inv()*ip;
+				  p.x = ip.at<double>(0);
+				  p.y = ip.at<double>(1);
+				  p2.push_back( p );
+				}
+
+				cv::Mat E = cv::findEssentialMat(p1, p2);
+				std::cout << "Essential Matrix_2\n" << E << std::endl;
+
+				cv::Mat R1 = cv::Mat::eye(3,3,CV_64F);
+				cv::Mat t1 = cv::Mat::zeros(3,1,CV_64F);
+				cv::Matx33d R2_calc;
+				cv::Matx31d t2_calc;
+
+				//③R,tの算出
+				cv::recoverPose(E, p1, p2, R2_calc, t2_calc);
+
+				std::cout << "\nR1:\n" << R1 << std::endl;
+				std::cout << "t1:\n" << t1 << std::endl;
+				std::cout << "\nground truth\n R2:\n" << R2 << std::endl;
+				std::cout << "t2:\n" << t2 << std::endl;
+				std::cout << "\ncalc result\n R2:\n" << R2_calc << std::endl;
+				std::cout << "t2:\n" << t2_calc << std::endl;
+
+
+			}
+			break;
+			default:
 			exit(0);
 			break;
 		}
 	}
 
 	return 0;
+}
+
+//**Loading datas**//
+cv::Mat K1 = cv::Mat::eye(3,3,CV_64F);
+cv::Mat K2 = cv::Mat::eye(3,3,CV_64F);
+cv::Mat R2 = cv::Mat::eye(3,3,CV_64F);
+cv::Mat t2;
+
+std::vector<cv::Point3d> worldPoints; //対応点の3次元座標
+std::vector<cv::Point2d> imagePoints1; //カメラ1画像への射影点
+std::vector<cv::Point2d> imagePoints2; //カメラ2画像への射影点
+
+void loadFile(const std::string& filename)
+{
+	cv::FileStorage fs(filename, cv::FileStorage::READ);
+	cv::FileNode node(fs.fs, NULL);
+
+	read(node["worldPoints"], worldPoints);
+	read(node["imagePoints1"], imagePoints2);
+	read(node["imagePoints2"], imagePoints2);
+
+	read(node["K1"], K1);
+	read(node["K2"], K2);
+	read(node["R2"], R2);
+	read(node["t2"], t2);
+
+	std::cout << "file loaded." << std::endl;
 }
